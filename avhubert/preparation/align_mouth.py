@@ -86,10 +86,9 @@ def cut_patch(img, landmarks, height, width, threshold=5):
                          int(round(center_x) - round(width)): int(round(center_x) + round(width))])
     return cutted_img
 
-def write_video_ffmpeg(rois, target_path, ffmpeg):
+def write_video_ffmpeg(rois, target_path, ffmpeg, fps=25):
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
     decimals = 10
-    fps = 25
     tmp_dir = tempfile.mkdtemp()
     for i_roi, roi in enumerate(rois):
         cv2.imwrite(os.path.join(tmp_dir, str(i_roi).zfill(decimals)+'.png'), roi)
@@ -99,7 +98,7 @@ def write_video_ffmpeg(rois, target_path, ffmpeg):
     ## ffmpeg
     if os.path.isfile(target_path):
         os.remove(target_path)
-    cmd = [ffmpeg, "-f", "concat", "-safe", "0", "-i", list_fn, "-q:v", "1", "-r", str(fps), '-y', '-crf', '20', target_path]
+    cmd = [ffmpeg, "-f", "concat", "-safe", "0", "-i", list_fn, "-q:v", "1", "-r", str(fps), '-y', '-crf', '20', '-pix_fmt', 'yuv420p', target_path]
     pipe = subprocess.run(cmd, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
     # rm tmp dir
     shutil.rmtree(tmp_dir)
@@ -180,7 +179,6 @@ def crop_patch(video_pathname, landmarks, mean_face_landmarks, stablePntsIDs, ST
         frame_idx += 1
     return None
 
-
 def landmarks_interpolate(landmarks):
     
     """Interpolate landmarks
@@ -200,10 +198,13 @@ def landmarks_interpolate(landmarks):
     if valid_frames_idx:
         landmarks[:valid_frames_idx[0]] = [landmarks[valid_frames_idx[0]]] * valid_frames_idx[0]
         landmarks[valid_frames_idx[-1]:] = [landmarks[valid_frames_idx[-1]]] * (len(landmarks) - valid_frames_idx[-1])
-    valid_frames_idx = [idx for idx, _ in enumerate(landmarks) if _ is not None]
-    assert len(valid_frames_idx) == len(landmarks), "not every frame has landmark"
-    return landmarks
 
+    # valid_frames_idx = [idx for idx, _ in enumerate(landmarks) if _ is not None]
+    # assert len(valid_frames_idx) == len(landmarks), "not every frame has landmark"
+
+    assert not any(landmark is None for landmark in landmarks), "Landmarks still missing for some frames"
+
+    return landmarks
 
 if __name__ == '__main__':
     args = load_args()

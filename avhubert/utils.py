@@ -22,7 +22,10 @@ def load_video(path):
                     frames.append(frame)
                 else:
                     break
+            
             frames = np.stack(frames)
+
+            cap.release()
             return frames
         except Exception:
             print(f"failed loading {path} ({i} / 3)")
@@ -87,7 +90,12 @@ class CenterCrop(object):
         Returns:
             numpy.ndarray: Cropped image.
         """
-        t, h, w = frames.shape
+        try:
+            t, h, w = frames.shape
+        except Exception as err:
+            print(f'frames.shape: {frames.shape}')
+            assert False
+
         th, tw = self.size
         delta_w = int(round((w - tw))/2.)
         delta_h = int(round((h - th))/2.)

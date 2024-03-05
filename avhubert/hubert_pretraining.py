@@ -25,9 +25,11 @@ DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
     from hubert_dataset import AVHubertDataset
+    from hubert_dataset import AVHubertDataset_2
     from sequence_generator import SequenceGenerator
 else:
     from .hubert_dataset import AVHubertDataset
+    from .hubert_dataset import AVHubertDataset_2
     from .sequence_generator import SequenceGenerator
 
 logger = logging.getLogger(__name__)
@@ -143,6 +145,7 @@ class AVHubertPretrainingConfig(FairseqDataclass):
     image_aug: bool = field(default=False, metadata={'help': 'image data augmentation'})
     image_crop_size: int = field(
         default=88, metadata={"help": "image ROI size"})
+        # default=88 * 4, metadata={"help": "image ROI size"})
     image_mean: float = field(
         default=0.421, metadata={"help": "image mean"})
     image_std: float = field(
@@ -269,6 +272,74 @@ class AVHubertPretrainingTask(FairseqTask):
             noise_prob=self.cfg.noise_prob,
             noise_snr=noise_snr,
             noise_num=noise_num
+        )
+    
+    def load_dataset_2(self, split: str, frames: np.ndarray, **kwargs) -> None:
+        # manifest = f"{self.cfg.data}/{split}.tsv"
+        
+        dictionaries = [self.target_dictionary] if self.fine_tuning else self.dictionaries
+        pad_list = [dictionary.pad() for dictionary in dictionaries]
+        eos_list = [dictionary.eos() for dictionary in dictionaries]
+        
+        if not self.cfg.is_s2s:
+            procs = [LabelEncoder(dictionary) for dictionary in dictionaries]
+        else:
+            logger.info(f"Using tokenizer")
+            bpe_tokenizer = self.s2s_tokenizer
+            procs = [LabelEncoderS2SToken(dictionary, bpe_tokenizer) for dictionary in dictionaries]
+
+        # paths = [
+        #     f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels
+        # ]
+
+        image_aug = self.cfg.image_aug if split == 'train' else False
+
+        noise_fn, noise_snr = None, eval(self.cfg.noise_snr)
+        noise_num = self.cfg.noise_num
+        
+        # print(f'===========================================')
+        # print(f'image_mean: {self.cfg.image_mean}')
+        # print(f'image_std: {self.cfg.image_std}')
+        # print(f'image_crop_size: {self.cfg.image_crop_size}')
+        # print(f'===========================================')
+    
+        self.datasets[split] = AVHubertDataset_2(
+            # manifest,
+
+            frames=frames,
+            # fps=fps,
+
+            # sample_rate=self.cfg.sample_rate,
+            # audio=,
+
+            # label_paths=paths,
+            # label_rates=self.cfg.label_rate,
+            pad_list=pad_list,
+            eos_list=eos_list,
+            label_processors=procs,
+            max_keep_sample_size=self.cfg.max_sample_size,
+            min_keep_sample_size=self.cfg.min_sample_size,
+            max_sample_size=self.cfg.max_trim_sample_size,
+            pad_audio=self.cfg.pad_audio,
+            normalize=self.cfg.normalize,
+            # store_labels=False,
+            random_crop=self.cfg.random_crop,
+
+            # single_target=self.cfg.single_target,
+            single_target=True,
+
+            stack_order_audio=self.cfg.stack_order_audio,
+            # skip_verify=self.cfg.skip_verify,
+            image_mean=self.cfg.image_mean,
+            image_std=self.cfg.image_std,
+            image_crop_size=self.cfg.image_crop_size,
+            image_aug=image_aug,
+            # modalities=self.cfg.modalities,
+            is_s2s=self.cfg.is_s2s,
+            # noise_fn=noise_fn,
+            # noise_prob=self.cfg.noise_prob,
+            # noise_snr=noise_snr,
+            # noise_num=noise_num
         )
 
     def max_positions(self) -> Tuple[int, int]:
