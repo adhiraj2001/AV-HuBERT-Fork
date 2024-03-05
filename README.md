@@ -1,3 +1,8 @@
+# AV-HuBERT Fork
+
+> Updating AV-HuBERT Codebase to add support for inference directly using Frames and Audio samples in code.
+
+
 # AV-HuBERT (Audio-Visual Hidden Unit BERT)
 [Learning Audio-Visual Speech Representation by Masked Multimodal Cluster Prediction](https://arxiv.org/abs/2201.02184)
 
