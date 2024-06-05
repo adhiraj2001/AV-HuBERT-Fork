@@ -188,6 +188,7 @@ def landmarks_interpolate(landmarks):
     valid_frames_idx = [idx for idx, _ in enumerate(landmarks) if _ is not None]
     if not valid_frames_idx:
         return None
+
     for idx in range(1, len(valid_frames_idx)):
         if valid_frames_idx[idx] - valid_frames_idx[idx-1] == 1:
             continue

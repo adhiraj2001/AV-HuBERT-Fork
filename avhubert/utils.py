@@ -4,11 +4,13 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import cv2
-import torch
 import random
-import numpy as np
 from typing import Dict, List, Optional, Tuple
+
+import cv2
+import numpy as np
+import torch
+
 
 def load_video(path):
     for i in range(3):
@@ -94,7 +96,7 @@ class CenterCrop(object):
             t, h, w = frames.shape
         except Exception as err:
             print(f'frames.shape: {frames.shape}')
-            assert False
+            raise err
 
         th, tw = self.size
         delta_w = int(round((w - tw))/2.)
