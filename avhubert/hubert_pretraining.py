@@ -26,10 +26,12 @@ DBG=True if len(sys.argv) == 1 else False
 if DBG:
     from hubert_dataset import AVHubertDataset
     from hubert_dataset import AVHubertDataset_2
+    from hubert_dataset import AVHubertDataset_3
     from sequence_generator import SequenceGenerator
 else:
     from .hubert_dataset import AVHubertDataset
     from .hubert_dataset import AVHubertDataset_2
+    from .hubert_dataset import AVHubertDataset_3
     from .sequence_generator import SequenceGenerator
 
 logger = logging.getLogger(__name__)
@@ -340,6 +342,58 @@ class AVHubertPretrainingTask(FairseqTask):
             # noise_prob=self.cfg.noise_prob,
             # noise_snr=noise_snr,
             # noise_num=noise_num
+        )
+    
+    def load_dataset_3(self, split: str = None, video_frames: np.ndarray = None, audio_wav: np.ndarray = None, audio_sr: float = None, **kwargs) -> None:
+        dictionaries = [self.target_dictionary] if self.fine_tuning else self.dictionaries
+        pad_list = [dictionary.pad() for dictionary in dictionaries]
+        eos_list = [dictionary.eos() for dictionary in dictionaries]
+        
+        if not self.cfg.is_s2s:
+            procs = [LabelEncoder(dictionary) for dictionary in dictionaries]
+        else:
+            logger.info(f"Using tokenizer")
+            bpe_tokenizer = self.s2s_tokenizer
+            procs = [LabelEncoderS2SToken(dictionary, bpe_tokenizer) for dictionary in dictionaries]
+
+        image_aug = self.cfg.image_aug if split == 'train' else False
+
+        noise_fn, noise_snr = None, eval(self.cfg.noise_snr)
+        noise_num = self.cfg.noise_num
+        
+        self.datasets[split] = AVHubertDataset_3(
+                video_frames = video_frames,
+
+                audio_wav = audio_wav,
+                audio_sr = audio_sr,
+
+                pad_list=pad_list,
+                eos_list=eos_list,
+
+                label_processors=procs,
+                max_keep_sample_size=self.cfg.max_sample_size,
+                min_keep_sample_size=self.cfg.min_sample_size,
+                max_sample_size=self.cfg.max_trim_sample_size,
+                pad_audio=self.cfg.pad_audio,
+                normalize=self.cfg.normalize,
+                random_crop=self.cfg.random_crop,
+
+                # single_target=self.cfg.single_target,
+                single_target=True,
+            
+                stack_order_audio=self.cfg.stack_order_audio,
+
+                image_mean=self.cfg.image_mean,
+                image_std=self.cfg.image_std,
+                image_crop_size=self.cfg.image_crop_size,
+                image_aug=image_aug,
+
+                is_s2s=self.cfg.is_s2s,
+
+                noise_fn=noise_fn,
+                noise_prob=self.cfg.noise_prob,
+                noise_snr=noise_snr,
+                noise_num=noise_num
         )
 
     def max_positions(self) -> Tuple[int, int]:
