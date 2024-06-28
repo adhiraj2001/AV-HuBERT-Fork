@@ -1020,6 +1020,7 @@ class AVHubertDataset_3(FairseqDataset):
         self.label_processors = label_processors
         self.single_target = single_target
         self.is_s2s = is_s2s
+        self.noise_wav, self.noise_prob, self.noise_snr, self.noise_num = [ln.strip() for ln in open(noise_fn).readlines()] if noise_fn is not None else [], noise_prob, noise_snr, noise_num
 
         assert self.single_target == (self.label_rates[0] == -1), f"single target should be equivalent to sequence label (label_rate==-1)"
 
@@ -1116,7 +1117,7 @@ class AVHubertDataset_3(FairseqDataset):
 
     def add_noise(self, clean_wav):
         clean_wav = clean_wav.astype(np.float32)
-        noise_wav = self.select_noise()
+        noise_wav = self.select_noise() if self.noise_wav else np.array([0.0] * len(clean_wav), dtype=np.float32)
         if type(self.noise_snr) == int or type(self.noise_snr) == float:
             snr = self.noise_snr
         elif type(self.noise_snr) == tuple:
@@ -1152,11 +1153,14 @@ class AVHubertDataset_3(FairseqDataset):
         if audio_feats is not None and video_feats is not None:
             diff = len(audio_feats) - len(video_feats)
             if diff < 0:
-                audio_feats = np.concatenate([audio_feats, np.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.dtype)])
+                # audio_feats = np.concatenate([audio_feats, np.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.dtype)])
+                audio_feats = torch.concatenate([audio_feats, torch.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.dtype)])
+                # audio_feats = np.concatenate([audio_feats.numpy(), np.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.numpy().dtype)])
             elif diff > 0:
                 audio_feats = audio_feats[:-diff]
 
         return {"id": 1, 'fid': 1, "video_source": video_feats, 'audio_source': audio_feats, "label_list": self.get_labels(index)}
+        # return {"id": 1, 'fid': 1, "video_source": None, 'audio_source': audio_feats, "label_list": self.get_labels(index)}
 
     def __len__(self):
         return len(self.sizes)
